@@ -32,7 +32,7 @@ import (
 )
 
 const (
-	debugAddr       = "localhost:8080"
+	debugAddr       = "localhost:8082"
 	dbType          = "mysql"
 	envPrefix       = "NOTARY_SIGNER"
 	defaultAliasEnv = "DEFAULT_ALIAS"

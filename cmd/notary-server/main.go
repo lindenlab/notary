@@ -28,7 +28,7 @@ import (
 )
 
 // DebugAddress is the debug server address to listen on
-const DebugAddress = "localhost:8080"
+const DebugAddress = "localhost:8081"
 
 var debug bool
 var configFile string
@@ -39,7 +39,7 @@ func init() {
 
 	// Setup flags
 	flag.StringVar(&configFile, "config", "", "Path to configuration file")
-	flag.BoolVar(&debug, "debug", false, "Enable the debugging server on localhost:8080")
+	flag.BoolVar(&debug, "debug", false, "Enable the debugging server on localhost:8081")
 }
 
 func main() {
