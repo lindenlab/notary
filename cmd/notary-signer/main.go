@@ -94,25 +94,31 @@ func main() {
 
 	certFile := viper.GetString("server.cert_file")
 	keyFile := viper.GetString("server.key_file")
+	useTLS := true
 	if certFile == "" || keyFile == "" {
-		usage()
-		log.Fatalf("Certificate and key are mandatory")
+		//usage()
+		//log.Fatalf("Certificate and key are mandatory")
+		logrus.Warn("Running without TLS due to missing cert and/or key file")
+		useTLS = false
 	}
 
-	tlsConfig := &tls.Config{
-		MinVersion:               tls.VersionTLS12,
-		PreferServerCipherSuites: true,
-		CipherSuites: []uint16{
-			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-			tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
-			tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
-			tls.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
-			tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
-			tls.TLS_RSA_WITH_AES_128_CBC_SHA,
-			tls.TLS_RSA_WITH_AES_256_CBC_SHA},
+	var tlsConfig *tls.Config
+	if useTLS {
+		tlsConfig = &tls.Config{
+			MinVersion:               tls.VersionTLS12,
+			PreferServerCipherSuites: true,
+			CipherSuites: []uint16{
+				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+				tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+				tls.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
+				tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
+				tls.TLS_RSA_WITH_AES_128_CBC_SHA,
+				tls.TLS_RSA_WITH_AES_256_CBC_SHA},
+		}
+		tlsConfig.Rand = rand.Reader
 	}
-	tlsConfig.Rand = rand.Reader
 
 	cryptoServices := make(signer.CryptoServiceIndex)
 
@@ -165,11 +171,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to listen %v", err)
 	}
-	creds, err := credentials.NewServerTLSFromFile(certFile, keyFile)
-	if err != nil {
-		log.Fatalf("failed to generate credentials %v", err)
+	if useTLS {
+		creds, err := credentials.NewServerTLSFromFile(certFile, keyFile)
+		if err != nil {
+			log.Fatalf("failed to generate credentials %v", err)
+		}
+		go grpcServer.Serve(creds.NewListener(lis))
+	} else {
+		go grpcServer.Serve(lis)
 	}
-	go grpcServer.Serve(creds.NewListener(lis))
 
 	httpAddr := viper.GetString("server.http_addr")
 	if httpAddr == "" {
@@ -187,7 +197,11 @@ func main() {
 		log.Println("HTTP server listening on", httpAddr)
 	}
 
-	err = server.ListenAndServeTLS(certFile, keyFile)
+	if useTLS {
+		err = server.ListenAndServeTLS(certFile, keyFile)
+	} else  {
+		err = server.ListenAndServe()
+	}
 	if err != nil {
 		log.Fatal("HTTP server failed to start:", err)
 	}

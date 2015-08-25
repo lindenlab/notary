@@ -21,12 +21,20 @@ type NotarySigner struct {
 func NewNotarySigner(hostname string, port string, tlscafile string) *NotarySigner {
 	var opts []grpc.DialOption
 	netAddr := net.JoinHostPort(hostname, port)
-	creds, err := credentials.NewClientTLSFromFile(tlscafile, hostname)
-	if err != nil {
-		logrus.Fatal("fail to read: ", err)
+	var (
+		conn *grpc.ClientConn
+		err error
+	)
+	if tlscafile == "" {
+		logrus.Warnf("Connecting without TLS: %s:%s", hostname, port)
+	} else {
+		creds, err := credentials.NewClientTLSFromFile(tlscafile, hostname)
+		if err != nil {
+			logrus.Fatal("fail to read: ", err)
+		}
+		opts = append(opts, grpc.WithTransportCredentials(creds))
+		conn, err = grpc.Dial(netAddr, opts...)
 	}
-	opts = append(opts, grpc.WithTransportCredentials(creds))
-	conn, err := grpc.Dial(netAddr, opts...)
 
 	if err != nil {
 		logrus.Fatal("fail to dial: ", err)
